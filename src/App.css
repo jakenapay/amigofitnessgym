@@ -1,0 +1,10 @@
+/* App.css — global layout */
+
+main {
+  display: block;
+}
+
+/* Smooth anchor scroll offset for fixed nav */
+section[id] {
+  scroll-margin-top: 80px;
+}
