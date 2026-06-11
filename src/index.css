@@ -25,6 +25,7 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  overflow-x: hidden;
 }
 
 body {
@@ -172,7 +173,14 @@ ul, ol { list-style: none; }
   .section-container { padding: 0 32px; }
 }
 
+@media (max-width: 1024px) {
+  .reveal-left  { transform: translateX(-30px); }
+  .reveal-right { transform: translateX(30px); }
+}
+
 @media (max-width: 640px) {
   .section-container { padding: 0 20px; }
   .btn-primary, .btn-outline { padding: 14px 32px; }
+  .reveal-left  { transform: translateX(-20px); }
+  .reveal-right { transform: translateX(20px); }
 }

@@ -91,8 +91,6 @@ export default function Hero() {
           <span className="hero__title-line hero__title-line--solid">GYM</span>
         </h1>
 
-        <p className="hero__location">Kamias &bull; Quezon City &bull; Philippines</p>
-
         <p className="hero__tagline">
           Making fitness <em>simple, fun,</em> and accessible for everyone.<br />
           Modern equipment &mdash; friendly trainers &mdash; zero judgment.

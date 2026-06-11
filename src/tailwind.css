@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Override Tailwind preflight conflicts with existing design system */
+@layer base {
+  * { box-sizing: border-box; }
+  body { background-color: var(--bg-dark); color: var(--text-primary); }
+}

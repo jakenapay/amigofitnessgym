@@ -6,6 +6,7 @@ import About from './components/About';
 import Facilities from './components/Facilities';
 import Promo from './components/Promo';
 import Features from './components/Features';
+import Careers from './components/Careers';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import AdminPanel from './components/AdminPanel';
@@ -21,6 +22,7 @@ export default function App() {
         <Facilities />
         <Promo />
         <Features />
+        <Careers />
         <Contact />
       </main>
       <Footer />

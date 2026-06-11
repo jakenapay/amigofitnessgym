@@ -1,0 +1,188 @@
+.db { display: flex; flex-direction: column; gap: 20px; }
+
+/* Page header */
+.db-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.db-page-title {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+}
+.db-page-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+/* KPI grid */
+.db-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.db-stat {
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: border-color 0.2s;
+}
+
+.db-stat:hover { border-color: rgba(var(--primary-rgb),0.2); }
+
+.db-stat__icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  background: color-mix(in srgb, var(--ic) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ic) 25%, transparent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ic);
+}
+
+.db-stat__val {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.db-stat__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.db-stat__sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Charts row */
+.db-charts {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 12px;
+}
+
+/* Cards */
+.db-card {
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.db-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.db-card__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+
+.db-card__badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.db-card__badge--warn {
+  color: #f59e0b;
+  background: rgba(245,158,11,0.1);
+  border-color: rgba(245,158,11,0.25);
+}
+
+/* Tooltip */
+.db-tooltip {
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.db-tooltip__label { font-size: 0.72rem; color: var(--text-muted); }
+.db-tooltip__val { font-size: 0.85rem; font-weight: 700; color: var(--primary); margin-top: 2px; }
+
+/* Quick tables row */
+.db-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Mini table */
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.db-table th {
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.db-table td {
+  padding: 9px 8px 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.db-table tr:last-child td { border-bottom: none; }
+.db-table__name { color: var(--text-primary); font-weight: 500; }
+.db-table__muted { color: var(--text-muted); font-size: 0.72rem; }
+.db-table__warn { color: #f59e0b; font-size: 0.72rem; font-weight: 600; }
+
+/* Badges */
+.db-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.db-badge--gold { background: rgba(245,197,24,0.12); color: var(--primary); border: 1px solid rgba(245,197,24,0.25); }
+.db-badge--blue { background: rgba(96,165,250,0.12); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .db-stats { grid-template-columns: repeat(3, 1fr); }
+  .db-charts { grid-template-columns: 1fr; }
+  .db-card--pie { max-width: 100%; }
+}
+
+@media (max-width: 900px) {
+  .db-stats { grid-template-columns: 1fr 1fr; }
+  .db-tables { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .db-stats { grid-template-columns: 1fr; }
+}

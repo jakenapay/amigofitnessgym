@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import logo from '../assets/amigo png logo.png';
 import './Footer.css';
 
@@ -37,7 +38,7 @@ export default function Footer() {
           <div className="footer__col">
             <h4 className="footer__col-title">Navigate</h4>
             <ul>
-              {[['#about','About Us'],['#facilities','Facilities'],['#promo','Promotions'],['#features','Why Us'],['#contact','Contact']].map(([href, label]) => (
+              {[['#about','About Us'],['#facilities','Facilities'],['#promo','Promotions'],['#features','Why Us'],['#careers','Careers'],['#contact','Contact']].map(([href, label]) => (
                 <li key={href}>
                   <a href={href} onClick={e => { e.preventDefault(); scrollTo(href); }}>{label}</a>
                 </li>
@@ -74,9 +75,9 @@ export default function Footer() {
             &copy; {year} Amigo&apos;s Fitness Gym. All rights reserved.
             <span> &middot; 129 Kamias Rd, Diliman, Quezon City, Philippines</span>
           </p>
-          <p className="footer__made">
-            7 Branches &amp; Growing
-          </p>
+          <Link to="/login" className="footer__login-link">
+            Admin Login
+          </Link>
         </div>
       </div>
     </footer>
