@@ -56,6 +56,19 @@
 
 .pm-btn-add:hover { opacity: 0.85; }
 
+.pm-btn-add--qr {
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.pm-btn-add--qr:hover {
+  opacity: 1;
+  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(var(--primary-rgb), 0.35);
+  color: var(--primary);
+}
+
 .pm-toggle {
   display: flex;
   align-items: center;

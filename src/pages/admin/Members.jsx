@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { UserPlus, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { UserPlus, X, ToggleLeft, ToggleRight, QrCode } from 'lucide-react';
 import AdminTable from '../../components/admin/AdminTable';
+import QrGeneratorModal from '../../components/admin/QrGeneratorModal';
 import './PageShared.css';
 
 const STATUS_COLOR = { Active: 'green', 'Expiring Soon': 'gold', Expired: 'red', Frozen: 'blue' };
@@ -56,6 +57,7 @@ function FormField({ label, name, type = 'text', value, onChange, options }) {
 export default function Members() {
   const [data, setData] = useState(SAMPLE);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [qrOpen, setQrOpen]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow]     = useState(null);
   const [form, setForm]           = useState(BLANK);
@@ -99,6 +101,9 @@ export default function Members() {
           </button>
           <button className="pm-btn-add" onClick={openAdd}>
             <UserPlus size={14} /> Add Member
+          </button>
+          <button className="pm-btn-add pm-btn-add--qr" onClick={() => setQrOpen(true)}>
+            <QrCode size={14} /> Generate QR
           </button>
         </div>
       </div>
@@ -153,6 +158,13 @@ export default function Members() {
             </div>
           </div>
         </div>
+      )}
+
+      {qrOpen && (
+        <QrGeneratorModal
+          members={data.filter(r => !r.is_deleted)}
+          onClose={() => setQrOpen(false)}
+        />
       )}
     </div>
   );

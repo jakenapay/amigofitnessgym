@@ -1,0 +1,171 @@
+/* ========== QR GENERATOR MODAL ========== */
+.pm-modal--qrgen { max-width: 440px; }
+
+/* ── Search ── */
+.qrg-search-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qrg-search-field { position: relative; }
+
+.qrg-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.qrg-search-input { padding-left: 34px !important; }
+
+/* Dropdown */
+.qrg-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #1c1c1c;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  z-index: 20;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+}
+
+.qrg-dropdown__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  gap: 12px;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.qrg-dropdown__item:last-child { border-bottom: none; }
+.qrg-dropdown__item:hover { background: rgba(255,255,255,0.05); }
+.qrg-dropdown__item--active { background: rgba(245,197,24,0.07); }
+
+.qrg-dropdown__name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+/* ── Selected member pill ── */
+.qrg-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(245,197,24,0.06);
+  border: 1px solid rgba(245,197,24,0.22);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.qrg-selected__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qrg-selected__name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.qrg-selected__token {
+  font-size: 0.7rem;
+  font-family: 'Courier New', monospace;
+  color: var(--primary);
+  letter-spacing: 1.5px;
+}
+
+/* ── Generate button ── */
+.qrg-gen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px;
+  font-size: 0.82rem;
+}
+
+.qrg-gen-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── QR Result ── */
+.qrg-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.qrg-result__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px 24px 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.qrg-result__img {
+  width: 200px;
+  height: 200px;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.qrg-result__caption {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.qrg-result__member {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #000;
+  font-family: var(--font-body);
+  letter-spacing: 0.3px;
+}
+
+.qrg-result__token {
+  font-size: 0.68rem;
+  font-family: 'Courier New', monospace;
+  color: #555;
+  letter-spacing: 2px;
+}
+
+/* ── Result action buttons ── */
+.qrg-result__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.qrg-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qrg-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

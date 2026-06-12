@@ -1,0 +1,592 @@
+-- ================================================================
+-- AMIGO'S FITNESS GYM — Database Schema
+-- Engine: MySQL 8.0+ / TiDB Cloud (MySQL-compatible)
+-- Charset: utf8mb4
+--
+-- Column names in this file match exactly what the Express API
+-- routes (api/routes/*.js) read and write.
+-- ================================================================
+
+
+-- ----------------------------------------------------------------
+-- 0. DATABASE
+-- ----------------------------------------------------------------
+
+CREATE DATABASE IF NOT EXISTS amigo_fitness
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE amigo_fitness;
+
+
+-- ================================================================
+-- TABLE DEFINITIONS
+-- ================================================================
+
+
+-- ----------------------------------------------------------------
+-- 1. branches
+--    Lookup table for the 7 gym locations.
+--    Referenced as plain text in members/employees for simplicity,
+--    but kept here for reporting and future expansion.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS branches (
+  id         INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  name       VARCHAR(100)     NOT NULL,
+  address    VARCHAR(255),
+  phone      VARCHAR(30),
+  is_active  TINYINT(1)       NOT NULL DEFAULT 1,
+  created_at DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ----------------------------------------------------------------
+-- 2. plans
+--    Membership plan catalog.
+--    `duration` stored as text (e.g. "30 days") to match the
+--    frontend display and api/routes/plans.js INSERT/UPDATE.
+--    `price` stored as DECIMAL for accurate revenue calculations.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS plans (
+  id          INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  name        VARCHAR(100)     NOT NULL,
+  price       DECIMAL(10,2)    NOT NULL DEFAULT 0.00,
+  duration    VARCHAR(50)      NOT NULL,          -- "30 days", "1 day", "365 days"
+  description VARCHAR(255),
+  perks       TEXT,
+  status      ENUM('Active','Archived') NOT NULL DEFAULT 'Active',
+  is_deleted  TINYINT(1)       NOT NULL DEFAULT 0,
+  deleted_at  DATETIME                  DEFAULT NULL,
+  created_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  INDEX idx_plans_status (status),
+  INDEX idx_plans_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ----------------------------------------------------------------
+-- 3. admins
+--    Admin portal users. Store bcrypt hash — never plaintext.
+--    The current frontend hardcodes admin/amigo2025;
+--    replace with a real lookup against this table before launch.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS admins (
+  id            INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  username      VARCHAR(50)      NOT NULL,
+  password_hash VARCHAR(255)     NOT NULL,        -- bcrypt hash
+  email         VARCHAR(150),
+  full_name     VARCHAR(100),
+  is_active     TINYINT(1)       NOT NULL DEFAULT 1,
+  created_at    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_admins_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ----------------------------------------------------------------
+-- 4. members
+--    Core membership table.
+--    `plan` and `branch` are stored as plain VARCHAR strings
+--    (denormalized) to match api/routes/members.js exactly.
+--    `qr_token` format: AMIGO-001 (set by trigger below).
+--    `deleted_at` tracks when a soft delete occurred.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS members (
+  id          INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  qr_token    VARCHAR(20)               DEFAULT NULL,
+  name        VARCHAR(150)     NOT NULL,
+  contact     VARCHAR(30),
+  plan        VARCHAR(100),              -- e.g. "Monthly", "Annual"
+  branch      VARCHAR(100),              -- e.g. "Kamias", "Branch 2"
+  start_date  DATE,
+  expiry_date DATE,
+  status      ENUM('Active','Expiring Soon','Expired','Frozen')
+                               NOT NULL DEFAULT 'Active',
+  is_deleted  TINYINT(1)       NOT NULL DEFAULT 0,
+  deleted_at  DATETIME                  DEFAULT NULL,
+  created_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_members_qr_token (qr_token),
+  INDEX idx_members_status    (status),
+  INDEX idx_members_expiry    (expiry_date),
+  INDEX idx_members_deleted   (is_deleted),
+  INDEX idx_members_branch    (branch(50))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- Trigger: auto-populate qr_token after each INSERT
+-- Format: AMIGO-001, AMIGO-002, ... AMIGO-999
+-- If TiDB raises a "same-table UPDATE in trigger" error,
+-- remove this trigger and set qr_token in application code:
+--   UPDATE members SET qr_token = CONCAT('AMIGO-', LPAD(insertId, 3, '0')) WHERE id = insertId
+
+DELIMITER $$
+CREATE TRIGGER trg_members_qr_token
+AFTER INSERT ON members
+FOR EACH ROW
+BEGIN
+  UPDATE members
+  SET    qr_token = CONCAT('AMIGO-', LPAD(NEW.id, 3, '0'))
+  WHERE  id = NEW.id;
+END$$
+DELIMITER ;
+
+
+-- ----------------------------------------------------------------
+-- 5. employees
+--    Staff records across all branches.
+--    `branch` stored as plain text (matches api/routes/employees.js).
+--    `salary` stored as DECIMAL for payroll calculations.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS employees (
+  id          INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  name        VARCHAR(150)     NOT NULL,
+  role        ENUM('Trainer','Front Desk','Cashier','Janitor',
+                   'Branch Manager','Nutritionist')
+                               NOT NULL,
+  branch      VARCHAR(100),              -- e.g. "Kamias"
+  contact     VARCHAR(30),
+  hire_date   DATE,
+  salary      DECIMAL(10,2),
+  status      ENUM('Active','On Leave','Resigned') NOT NULL DEFAULT 'Active',
+  is_deleted  TINYINT(1)       NOT NULL DEFAULT 0,
+  deleted_at  DATETIME                  DEFAULT NULL,
+  created_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  INDEX idx_employees_status  (status),
+  INDEX idx_employees_branch  (branch(50)),
+  INDEX idx_employees_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ----------------------------------------------------------------
+-- 6. payments
+--    Payment transaction ledger.
+--    Denormalized: `member_name` and `plan` stored as text
+--    so records remain intact even if member/plan is later deleted.
+--    `member_id` is a nullable soft-reference for lookup convenience.
+--    `or_number` = Official Receipt number.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS payments (
+  id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  member_id    INT UNSIGNED             DEFAULT NULL,  -- nullable soft-ref
+  member_name  VARCHAR(150),                          -- denormalized
+  plan         VARCHAR(100),                          -- denormalized
+  amount       DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
+  method       ENUM('Cash','GCash','Maya','Card') NOT NULL DEFAULT 'Cash',
+  payment_date DATE            NOT NULL,
+  or_number    VARCHAR(30),
+  is_deleted   TINYINT(1)      NOT NULL DEFAULT 0,
+  deleted_at   DATETIME                 DEFAULT NULL,
+  created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  INDEX idx_payments_member  (member_id),
+  INDEX idx_payments_date    (payment_date),
+  INDEX idx_payments_method  (method),
+  INDEX idx_payments_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ----------------------------------------------------------------
+-- 7. checkin_logs
+--    QR scan events from the Check-In admin page.
+--    `member_id` nullable in case token is not found.
+--    `qr_token` stored raw for audit trail.
+--    No soft delete — these are immutable audit records.
+-- ----------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS checkin_logs (
+  id          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  member_id   INT UNSIGNED             DEFAULT NULL,
+  qr_token    VARCHAR(20)     NOT NULL,
+  result      ENUM('Granted','Denied') NOT NULL,
+  note        VARCHAR(255)             DEFAULT '',
+  scanned_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  INDEX idx_checkin_member    (member_id),
+  INDEX idx_checkin_token     (qr_token),
+  INDEX idx_checkin_result    (result),
+  INDEX idx_checkin_scanned   (scanned_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ================================================================
+-- SAMPLE DATA
+-- ================================================================
+
+
+-- ----------------------------------------------------------------
+-- Branches
+-- ----------------------------------------------------------------
+
+INSERT INTO branches (name, address, phone) VALUES
+('Kamias',   '129 Kamias Rd, Diliman, Quezon City, PH 1101', '+63 976 660 5132'),
+('Branch 2', 'TBD', NULL),
+('Branch 3', 'TBD', NULL),
+('Branch 4', 'TBD', NULL),
+('Branch 5', 'TBD', NULL),
+('Branch 6', 'TBD', NULL),
+('Branch 7', 'TBD', NULL);
+
+
+-- ----------------------------------------------------------------
+-- Plans
+-- ----------------------------------------------------------------
+
+INSERT INTO plans (name, price, duration, description, perks, status) VALUES
+('Monthly',     800.00,  '30 days',  'Standard monthly access',        'All equipment access',                   'Active'),
+('Quarterly',  2100.00,  '90 days',  '3-month package (save 12%)',     'All equipment + 1 PT session',           'Active'),
+('Semi-Annual', 3800.00, '180 days', '6-month package (save 20%)',     'All equipment + 3 PT sessions',          'Active'),
+('Annual',     6500.00,  '365 days', 'Best value full year',           'All equipment + 6 PT sessions + locker', 'Active'),
+('Student',     600.00,  '30 days',  'For valid student ID holders',   'All equipment access (off-peak)',         'Active'),
+('Day Pass',    150.00,  '1 day',    'Walk-in single day access',      'Full equipment access',                  'Active'),
+('Couples',    1400.00,  '30 days',  'For 2 persons',                  'All equipment access for 2',             'Active'),
+('Old Plan',    700.00,  '30 days',  'Deprecated plan',                'Basic access',                           'Archived');
+
+
+-- ----------------------------------------------------------------
+-- Admins
+-- NOTE: Replace the password_hash value with a real bcrypt hash
+--       before connecting the login page to this table.
+--       Generate one with: node -e "require('bcrypt').hash('amigo2025',10).then(console.log)"
+-- ----------------------------------------------------------------
+
+INSERT INTO admins (username, password_hash, email, full_name) VALUES
+('admin', '$2b$10$REPLACE_THIS_WITH_A_REAL_BCRYPT_HASH', 'admin@amigosfgmc.com', 'Admin User');
+
+
+-- ----------------------------------------------------------------
+-- Members
+-- qr_token is set automatically by the trigger.
+-- plan and branch match the text values used in the frontend.
+-- ----------------------------------------------------------------
+
+INSERT INTO members (name, contact, plan, branch, start_date, expiry_date, status, is_deleted) VALUES
+('Juan dela Cruz',  '+63 912 345 6789', 'Monthly',     'Kamias', '2025-05-01', '2025-06-01', 'Expired',       0),
+('Maria Santos',    '+63 917 234 5678', 'Quarterly',   'Kamias', '2025-03-15', '2025-06-15', 'Expiring Soon', 0),
+('Carlo Reyes',     '+63 918 123 4567', 'Annual',      'Kamias', '2025-01-10', '2026-01-10', 'Active',        0),
+('Ana Lim',         '+63 919 876 5432', 'Monthly',     'Kamias', '2025-06-01', '2025-07-01', 'Active',        0),
+('Paolo Torres',    '+63 920 765 4321', 'Semi-Annual', 'Kamias', '2025-02-01', '2025-08-01', 'Active',        0),
+('Nina Cruz',       '+63 921 654 3210', 'Monthly',     'Kamias', '2025-05-13', '2025-06-13', 'Expiring Soon', 0),
+('Mark Villanueva', '+63 922 543 2109', 'Quarterly',   'Kamias', '2025-03-14', '2025-06-14', 'Expiring Soon', 0),
+('Lisa Gomez',      '+63 923 432 1098', 'Monthly',     'Kamias', '2025-05-15', '2025-06-15', 'Expiring Soon', 0),
+('Renz Dela Vega',  '+63 924 321 0987', 'Monthly',     'Kamias', '2025-05-16', '2025-06-16', 'Expiring Soon', 0),
+('Kim Andres',      '+63 925 210 9876', 'Annual',      'Kamias', '2024-12-01', '2025-12-01', 'Active',        0),
+('Jose Bautista',   '+63 926 109 8765', 'Monthly',     'Kamias', '2025-05-12', '2025-06-12', 'Expiring Soon', 0),
+('Grace Fernandez', '+63 927 098 7654', 'Student',     'Kamias', '2025-06-01', '2025-07-01', 'Active',        0),
+('Deleted Member',  '+63 928 987 6543', 'Monthly',     'Kamias', '2025-04-01', '2025-05-01', 'Expired',       1);
+
+
+-- ----------------------------------------------------------------
+-- Employees
+-- ----------------------------------------------------------------
+
+INSERT INTO employees (name, role, branch, contact, hire_date, salary, status, is_deleted) VALUES
+('Ricardo Mendez',  'Branch Manager', 'Kamias', '+63 912 111 2222', '2021-03-01', 28000.00, 'Active',   0),
+('Janet Cruz',      'Front Desk',     'Kamias', '+63 913 222 3333', '2022-01-15', 18000.00, 'Active',   0),
+('Bryan Soriano',   'Trainer',        'Kamias', '+63 914 333 4444', '2022-06-01', 22000.00, 'Active',   0),
+('Lorna Castillo',  'Cashier',        'Kamias', '+63 915 444 5555', '2023-02-10', 16500.00, 'Active',   0),
+('Dennis Valdez',   'Trainer',        'Kamias', '+63 916 555 6666', '2022-09-01', 22000.00, 'On Leave', 0),
+('Cecile Navarro',  'Nutritionist',   'Kamias', '+63 917 666 7777', '2023-05-20', 24000.00, 'Active',   0),
+('Felix Ramos',     'Janitor',        'Kamias', '+63 918 777 8888', '2021-08-01', 14000.00, 'Active',   0),
+('Former Employee', 'Trainer',        'Kamias', '+63 919 888 9999', '2020-01-01', 20000.00, 'Resigned', 1);
+
+
+-- ----------------------------------------------------------------
+-- Payments
+-- member_id references the member rows inserted above (IDs 1–13).
+-- member_name and plan are denormalized copies.
+-- ----------------------------------------------------------------
+
+INSERT INTO payments (member_id, member_name, plan, amount, method, payment_date, or_number) VALUES
+(3,  'Carlo Reyes',    'Annual',      6500.00, 'Cash',  '2025-01-10', 'OR-001'),
+(4,  'Ana Lim',        'Monthly',      800.00, 'GCash', '2025-06-01', 'OR-002'),
+(5,  'Paolo Torres',   'Semi-Annual', 3800.00, 'Maya',  '2025-02-01', 'OR-003'),
+(10, 'Kim Andres',     'Annual',      6500.00, 'Card',  '2024-12-01', 'OR-004'),
+(12, 'Grace Fernandez','Student',      600.00, 'Cash',  '2025-06-01', 'OR-005'),
+(2,  'Maria Santos',   'Quarterly',   2100.00, 'GCash', '2025-03-15', 'OR-006'),
+(1,  'Juan dela Cruz', 'Monthly',      800.00, 'Cash',  '2025-05-01', 'OR-007'),
+(6,  'Nina Cruz',      'Monthly',      800.00, 'GCash', '2025-05-13', 'OR-008'),
+(7,  'Mark Villanueva','Quarterly',   2100.00, 'Maya',  '2025-03-14', 'OR-009'),
+(9,  'Renz Dela Vega', 'Monthly',      800.00, 'Cash',  '2025-05-16', 'OR-010');
+
+
+-- ----------------------------------------------------------------
+-- Check-in Logs (sample history)
+-- member_id matches the member IDs above.
+-- qr_token is what the scanner reads: AMIGO-001 through AMIGO-013.
+-- ----------------------------------------------------------------
+
+INSERT INTO checkin_logs (member_id, qr_token, result, note, scanned_at) VALUES
+(3,    'AMIGO-003', 'Granted', '',                   '2025-06-13 09:14:22'),
+(10,   'AMIGO-010', 'Granted', '',                   '2025-06-13 09:11:05'),
+(1,    'AMIGO-001', 'Denied',  'Membership expired', '2025-06-13 08:57:43'),
+(4,    'AMIGO-004', 'Granted', '',                   '2025-06-13 08:44:18'),
+(5,    'AMIGO-005', 'Granted', '',                   '2025-06-13 08:31:09'),
+(NULL, 'FAKE-999',  'Denied',  'Member not found',   '2025-06-13 07:55:00');
+
+
+-- ================================================================
+-- VIEWS  (dashboard & reporting queries)
+-- ================================================================
+
+
+-- Dashboard KPI snapshot (one row)
+CREATE OR REPLACE VIEW vw_dashboard_kpis AS
+SELECT
+  (SELECT COUNT(*)
+     FROM members
+    WHERE status = 'Active'
+      AND is_deleted = 0)                                             AS active_members,
+
+  (SELECT COUNT(*)
+     FROM members
+    WHERE status = 'Expiring Soon'
+      AND is_deleted = 0)                                             AS expiring_soon,
+
+  (SELECT COUNT(*)
+     FROM members
+    WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
+      AND is_deleted = 0)                                             AS new_this_month,
+
+  (SELECT COUNT(*)
+     FROM employees
+    WHERE status = 'Active'
+      AND is_deleted = 0)                                             AS active_employees,
+
+  (SELECT COALESCE(SUM(amount), 0)
+     FROM payments
+    WHERE payment_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
+      AND is_deleted = 0)                                             AS revenue_this_month;
+
+
+-- Members expiring within the next 7 days
+CREATE OR REPLACE VIEW vw_expiring_soon AS
+SELECT
+  id,
+  name,
+  contact,
+  plan,
+  branch,
+  expiry_date,
+  DATEDIFF(expiry_date, CURDATE()) AS days_left
+FROM members
+WHERE is_deleted  = 0
+  AND expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+ORDER BY expiry_date ASC;
+
+
+-- Monthly revenue summary (for bar chart on Dashboard)
+CREATE OR REPLACE VIEW vw_monthly_revenue AS
+SELECT
+  DATE_FORMAT(payment_date, '%Y-%m')    AS month,
+  DATE_FORMAT(payment_date, '%b %Y')    AS month_label,
+  SUM(amount)                           AS total_revenue,
+  COUNT(*)                              AS transaction_count
+FROM payments
+WHERE is_deleted = 0
+GROUP BY DATE_FORMAT(payment_date, '%Y-%m'), DATE_FORMAT(payment_date, '%b %Y')
+ORDER BY month DESC
+LIMIT 12;
+
+
+-- Plan distribution (for pie chart on Dashboard)
+CREATE OR REPLACE VIEW vw_plan_distribution AS
+SELECT
+  plan,
+  COUNT(*) AS member_count
+FROM members
+WHERE is_deleted = 0
+  AND status != 'Expired'
+GROUP BY plan
+ORDER BY member_count DESC;
+
+
+-- Revenue breakdown by payment method
+CREATE OR REPLACE VIEW vw_revenue_by_method AS
+SELECT
+  method,
+  COUNT(*)      AS transaction_count,
+  SUM(amount)   AS total_amount
+FROM payments
+WHERE is_deleted = 0
+GROUP BY method;
+
+
+-- Today's check-in log with member detail
+CREATE OR REPLACE VIEW vw_todays_checkins AS
+SELECT
+  cl.id,
+  cl.scanned_at,
+  cl.qr_token,
+  m.name        AS member_name,
+  m.plan        AS member_plan,
+  cl.result,
+  cl.note
+FROM checkin_logs cl
+LEFT JOIN members m ON cl.member_id = m.id
+WHERE DATE(cl.scanned_at) = CURDATE()
+ORDER BY cl.scanned_at DESC;
+
+
+-- ================================================================
+-- USEFUL QUERIES  (commented — copy and run as needed)
+-- ================================================================
+
+
+-- 1. Validate QR token on check-in (used by POST /api/checkin)
+-- SELECT id, name, plan, status
+-- FROM   members
+-- WHERE  qr_token  = 'AMIGO-003'
+--   AND  is_deleted = 0;
+
+
+-- 2. Full member list with formatted data
+-- SELECT
+--   m.id,
+--   m.qr_token,
+--   m.name,
+--   m.contact,
+--   m.plan,
+--   m.branch,
+--   m.start_date,
+--   m.expiry_date,
+--   m.status,
+--   DATEDIFF(m.expiry_date, CURDATE()) AS days_until_expiry
+-- FROM members m
+-- WHERE m.is_deleted = 0
+-- ORDER BY m.name;
+
+
+-- 3. Revenue by method for the current month
+-- SELECT
+--   method,
+--   COUNT(*)    AS transactions,
+--   SUM(amount) AS total
+-- FROM payments
+-- WHERE payment_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
+--   AND is_deleted = 0
+-- GROUP BY method;
+
+
+-- 4. Member check-in history (last 100 scans)
+-- SELECT
+--   cl.scanned_at,
+--   COALESCE(m.name, cl.qr_token) AS member,
+--   m.plan,
+--   cl.result,
+--   cl.note
+-- FROM checkin_logs cl
+-- LEFT JOIN members m ON cl.member_id = m.id
+-- ORDER BY cl.scanned_at DESC
+-- LIMIT 100;
+
+
+-- 5. Nightly status auto-update (run via MySQL Event or cron job)
+--    Updates Active/Expiring Soon/Expired based on expiry_date.
+--    Does NOT touch Frozen members.
+-- UPDATE members
+-- SET    status = CASE
+--   WHEN expiry_date < CURDATE()
+--        THEN 'Expired'
+--   WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+--        THEN 'Expiring Soon'
+--   ELSE 'Active'
+-- END
+-- WHERE  is_deleted = 0
+--   AND  status    != 'Frozen';
+
+
+-- 6. Soft-delete a member (matches DELETE /api/members/:id)
+-- UPDATE members SET is_deleted = 1, deleted_at = NOW() WHERE id = ?;
+
+
+-- 7. Restore a soft-deleted member (matches PUT /api/members/:id/restore)
+-- UPDATE members SET is_deleted = 0, deleted_at = NULL WHERE id = ?;
+
+
+-- 8. Monthly Event to auto-update member statuses (optional)
+--    Enable the event scheduler first: SET GLOBAL event_scheduler = ON;
+-- CREATE EVENT IF NOT EXISTS evt_update_member_status
+-- ON SCHEDULE EVERY 1 DAY
+--   STARTS CONCAT(CURDATE(), ' 00:05:00')
+-- DO
+--   UPDATE members
+--   SET    status = CASE
+--     WHEN expiry_date < CURDATE()
+--          THEN 'Expired'
+--     WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+--          THEN 'Expiring Soon'
+--     ELSE 'Active'
+--   END
+--   WHERE  is_deleted = 0
+--     AND  status    != 'Frozen';
+
+
+-- ================================================================
+-- POST-INSTALL CHECKLIST
+-- ================================================================
+--
+--  1. Run this entire file against your TiDB Cloud cluster:
+--       mysql -h <host> -P 4000 -u <user> -p < database_schema.txt
+--
+--  2. If the TRIGGER does not work on TiDB, remove it and handle
+--     qr_token in application code (api/routes/members.js POST):
+--       const id = result.insertId;
+--       await pool.query(
+--         "UPDATE members SET qr_token = CONCAT('AMIGO-', LPAD(?, 3, '0')) WHERE id = ?",
+--         [id, id]
+--       );
+--
+--  3. Generate a real bcrypt hash for the admin password:
+--       node -e "require('bcrypt').hash('amigo2025', 10).then(console.log)"
+--     Then UPDATE admins SET password_hash = '<output>' WHERE username = 'admin';
+--
+--  4. Create a .env file at project root (see .env.example):
+--       DB_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+--       DB_PORT=4000
+--       DB_USER=<your_tidb_user>
+--       DB_PASSWORD=<your_tidb_password>
+--       DB_NAME=amigo_fitness
+--
+--  5. Enable the MySQL Event Scheduler on TiDB if using evt_update_member_status:
+--       SET GLOBAL event_scheduler = ON;
+--
+--  6. Update the Express login route (api/routes/auth.js or similar)
+--     to query the admins table instead of the hardcoded check in
+--     src/pages/LoginPage.jsx.
+--
+-- ================================================================
+-- TABLE SUMMARY
+-- ================================================================
+--
+--  Table            Rows (sample)  Soft-delete  Notes
+--  ---------------  -------------  -----------  --------------------------
+--  branches         7              No           Lookup only
+--  plans            8              Yes          1 archived (Old Plan)
+--  admins           1              No           bcrypt hashed passwords
+--  members          13             Yes          trigger sets qr_token
+--  employees        8              Yes          1 deleted (Former Employee)
+--  payments         10             Yes          denormalized member_name+plan
+--  checkin_logs     6              No           immutable audit log
+--
+-- ================================================================

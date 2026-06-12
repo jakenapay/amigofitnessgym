@@ -4,7 +4,7 @@ import './AdminTable.css';
 
 const PAGE_SIZE = 10;
 
-export default function AdminTable({ columns, data, onEdit, onDelete, onRestore, showDeleted }) {
+export default function AdminTable({ columns, data, onEdit, onDelete, onRestore, showDeleted, readOnly }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState(null);
@@ -71,12 +71,12 @@ export default function AdminTable({ columns, data, onEdit, onDelete, onRestore,
                   )}
                 </th>
               ))}
-              <th className="at__th at__th--actions">Actions</th>
+              {!readOnly && <th className="at__th at__th--actions">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {paged.length === 0 ? (
-              <tr><td colSpan={columns.length + 1} className="at__empty">No records found</td></tr>
+              <tr><td colSpan={readOnly ? columns.length : columns.length + 1} className="at__empty">No records found</td></tr>
             ) : paged.map((row, i) => (
               <tr key={row.id ?? i} className={row.is_deleted ? 'at__row--deleted' : ''}>
                 {columns.map(col => (
@@ -84,22 +84,24 @@ export default function AdminTable({ columns, data, onEdit, onDelete, onRestore,
                     {col.render ? col.render(row[col.key], row) : row[col.key]}
                   </td>
                 ))}
-                <td className="at__td at__td--actions">
-                  {row.is_deleted ? (
-                    <button className="at__btn at__btn--restore" onClick={() => onRestore?.(row)} title="Restore">
-                      <RotateCcw size={13} />
-                    </button>
-                  ) : (
-                    <>
-                      <button className="at__btn at__btn--edit" onClick={() => onEdit?.(row)} title="Edit">
-                        <Pencil size={13} />
+                {!readOnly && (
+                  <td className="at__td at__td--actions">
+                    {row.is_deleted ? (
+                      <button className="at__btn at__btn--restore" onClick={() => onRestore?.(row)} title="Restore">
+                        <RotateCcw size={13} />
                       </button>
-                      <button className="at__btn at__btn--del" onClick={() => onDelete?.(row)} title="Delete">
-                        <Trash2 size={13} />
-                      </button>
-                    </>
-                  )}
-                </td>
+                    ) : (
+                      <>
+                        <button className="at__btn at__btn--edit" onClick={() => onEdit?.(row)} title="Edit">
+                          <Pencil size={13} />
+                        </button>
+                        <button className="at__btn at__btn--del" onClick={() => onDelete?.(row)} title="Delete">
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

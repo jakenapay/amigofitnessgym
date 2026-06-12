@@ -11,6 +11,7 @@ import Members from './pages/admin/Members.jsx';
 import Employees from './pages/admin/Employees.jsx';
 import Plans from './pages/admin/Plans.jsx';
 import Payments from './pages/admin/Payments.jsx';
+import CheckIn from './pages/admin/CheckIn.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 
 createRoot(document.getElementById('root')).render(
@@ -26,6 +27,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="employees" element={<Employees />} />
             <Route path="plans" element={<Plans />} />
             <Route path="payments" element={<Payments />} />
+            <Route path="checkin" element={<CheckIn />} />
           </Route>
         </Routes>
       </BrowserRouter>
