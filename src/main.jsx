@@ -12,6 +12,7 @@ import Employees from './pages/admin/Employees.jsx';
 import Plans from './pages/admin/Plans.jsx';
 import Payments from './pages/admin/Payments.jsx';
 import CheckIn from './pages/admin/CheckIn.jsx';
+import Settings from './pages/admin/Settings.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 
 createRoot(document.getElementById('root')).render(
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="plans" element={<Plans />} />
             <Route path="payments" element={<Payments />} />
             <Route path="checkin" element={<CheckIn />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

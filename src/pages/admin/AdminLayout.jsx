@@ -2,7 +2,7 @@ import { useState, useEffect, Component } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserCheck, ClipboardList,
-  CreditCard, QrCode, LogOut, Menu, X, ChevronLeft, ChevronRight
+  CreditCard, QrCode, SlidersHorizontal, LogOut, Menu, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import logo from '../../assets/amigo.png';
 import './AdminLayout.css';
@@ -33,7 +33,8 @@ const NAV = [
   { label: 'Employees',  Icon: UserCheck,        to: '/admin/employees' },
   { label: 'Plans',      Icon: ClipboardList,    to: '/admin/plans' },
   { label: 'Payments',   Icon: CreditCard,       to: '/admin/payments' },
-  { label: 'Check-In',  Icon: QrCode,           to: '/admin/checkin' },
+  { label: 'Check-In',  Icon: QrCode,            to: '/admin/checkin' },
+  { label: 'Settings',  Icon: SlidersHorizontal, to: '/admin/settings' },
 ];
 
 export default function AdminLayout() {

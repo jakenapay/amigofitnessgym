@@ -9,7 +9,6 @@ import Features from './components/Features';
 import Careers from './components/Careers';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
-import AdminPanel from './components/AdminPanel';
 
 export default function App() {
   return (
@@ -26,7 +25,6 @@ export default function App() {
         <Contact />
       </main>
       <Footer />
-      <AdminPanel />
     </>
   );
 }
